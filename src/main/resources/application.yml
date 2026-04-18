@@ -1,16 +1,22 @@
 spring:
   application:
     name: delivery-service
+
   datasource:
     url: jdbc:postgresql://localhost:5434/delivery_db
     username: postgres
     password: postgres
+
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+
   flyway:
     enabled: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
 
 server:
   port: 8083
