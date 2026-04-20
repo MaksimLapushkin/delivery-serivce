@@ -34,12 +34,14 @@ public class OutboxPublisherService {
         for (OutboxEvent event : events) {
             try {
                 DeliveryLifecycleEventPayload payload = deserializePayload(event.getPayloadJson());
-                deliveryKafkaTemplate.send(DELIVERY_TOPIC, event.getAggregateId(), payload);
+
+                deliveryKafkaTemplate
+                        .send(DELIVERY_TOPIC, event.getAggregateId(), payload)
+                        .get();
+
                 event.setStatus(OutboxStatus.PUBLISHED);
                 event.setPublishedAt(Instant.now());
-                Thread.currentThread().interrupt();
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 log.error("Failed to publish outbox event id={}", event.getId(), e);
             }
         }

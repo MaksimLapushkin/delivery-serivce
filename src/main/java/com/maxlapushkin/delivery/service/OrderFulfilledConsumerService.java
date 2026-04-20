@@ -1,10 +1,12 @@
 package com.maxlapushkin.delivery.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.maxlapushkin.delivery.dto.DeliveryLifecycleEventPayload;
 import com.maxlapushkin.delivery.dto.OrderFulfilledEvent;
-import com.maxlapushkin.delivery.model.Delivery;
-import com.maxlapushkin.delivery.model.DeliveryStatus;
-import com.maxlapushkin.delivery.model.ProcessedEvent;
+import com.maxlapushkin.delivery.model.*;
 import com.maxlapushkin.delivery.repository.DeliveryRepository;
+import com.maxlapushkin.delivery.repository.DeliveryTimelineRepository;
+import com.maxlapushkin.delivery.repository.OutboxEventRepository;
 import com.maxlapushkin.delivery.repository.ProcessedEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -21,6 +24,9 @@ public class OrderFulfilledConsumerService {
 
     private final DeliveryRepository deliveryRepository;
     private final ProcessedEventRepository processedEventRepository;
+    private final DeliveryTimelineRepository deliveryTimelineRepository;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     @KafkaListener(
             topics = "order.lifecycle.v1",
@@ -33,7 +39,7 @@ public class OrderFulfilledConsumerService {
         if (!"ORDER_FULFILLED".equals(event.eventType())) {
             return;
         }
-        if (processedEventRepository.existsById(String.valueOf(event.eventId()))) {
+        if (processedEventRepository.existsById(event.eventId().toString())) {
             return;
         }
         if (deliveryRepository.findByOrderId(event.orderId()).isPresent()) {
@@ -59,9 +65,51 @@ public class OrderFulfilledConsumerService {
         deliveryRepository.save(delivery);
         String eventId = event.eventId().toString();
         Instant processedAt = Instant.now();
-        processedEventRepository.save(new ProcessedEvent(eventId, processedAt));
+        Instant now = event.occurredAt();
 
-        log.info("Received order lifecycle event: type={}, orderId={}",
-                event.eventType(), event.orderId());
+        DeliveryLifecycleEventPayload payload = new DeliveryLifecycleEventPayload(
+                UUID.randomUUID(),
+                delivery.getId(),
+                delivery.getOrderId(),
+                now,
+                "DELIVERY_ACCEPTED",
+                delivery.getStatus().name()
+        );
+
+        deliveryTimelineRepository.save(new DeliveryTimeline(
+                null,
+                delivery.getId(),
+                delivery.getOrderId(),
+                payload.eventId().toString(),
+                payload.eventType(),
+                payload.status(),
+                payload.occurredAt(),
+                toJson(payload)
+        ));
+
+        outboxEventRepository.save(
+                OutboxEvent.builder()
+                        .aggregateType("DELIVERY")
+                        .aggregateId(delivery.getId().toString())
+                        .eventType(payload.eventType())
+                        .payloadJson(toJson(payload))
+                        .status(OutboxStatus.NEW)
+                        .createdAt(payload.occurredAt())
+                        .publishedAt(null)
+                        .build()
+        );
+        processedEventRepository.save(new ProcessedEvent(eventId, processedAt));
+        log.info("Created delivery id={} for orderId={} with status={}",
+                delivery.getId(),
+                delivery.getOrderId(),
+                delivery.getStatus());
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize payload", e);
+        }
     }
 }
