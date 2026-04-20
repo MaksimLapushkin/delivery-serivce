@@ -15,6 +15,8 @@ import com.maxlapushkin.delivery.repository.OutboxEventRepository;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+
+import com.maxlapushkin.delivery.service.DeliveryCommandService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -2,7 +2,7 @@ package com.maxlapushkin.delivery.controller;
 
 import com.maxlapushkin.delivery.dto.DeliveryResponse;
 import com.maxlapushkin.delivery.dto.DeliveryTimelineResponse;
-import com.maxlapushkin.delivery.DeliveryQueryService;
+import com.maxlapushkin.delivery.service.DeliveryQueryService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

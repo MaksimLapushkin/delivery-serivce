@@ -14,6 +14,8 @@ import com.maxlapushkin.delivery.repository.OutboxEventRepository;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+
+import com.maxlapushkin.delivery.service.OutboxPublisherService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
