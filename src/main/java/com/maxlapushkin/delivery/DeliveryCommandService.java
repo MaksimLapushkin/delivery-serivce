@@ -135,6 +135,9 @@ public class DeliveryCommandService {
                 .status(OutboxStatus.NEW)
                 .createdAt(payload.occurredAt())
                 .publishedAt(null)
+                .retryCount(0)
+                .lastError(null)
+                .lastAttemptAt(null)
                 .build();
 
         outboxEventRepository.save(outboxEvent);

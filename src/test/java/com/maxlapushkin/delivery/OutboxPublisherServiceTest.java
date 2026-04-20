@@ -73,6 +73,8 @@ class OutboxPublisherServiceTest {
         OutboxEvent updated = outboxEventRepository.findById(outboxEvent.getId()).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
         assertThat(updated.getPublishedAt()).isNotNull();
+        assertThat(updated.getRetryCount()).isZero();
+        assertThat(updated.getLastError()).isNull();
 
         verify(deliveryKafkaTemplate).send(
                 eq(DELIVERY_TOPIC),
@@ -82,7 +84,7 @@ class OutboxPublisherServiceTest {
     }
 
     @Test
-    void publishNewEventsLeavesEventNewWhenKafkaSendFails() throws Exception {
+    void publishNewEventsKeepsEventNewAndIncrementsRetryCountWhenKafkaSendFails() throws Exception {
         // given
         DeliveryLifecycleEventPayload payload = buildPayload(3002L, 4002L, "DELIVERY_IN_TRANSIT");
         OutboxEvent outboxEvent = createNewOutboxEvent("4002", payload);
@@ -102,9 +104,43 @@ class OutboxPublisherServiceTest {
         OutboxEvent updated = outboxEventRepository.findById(outboxEvent.getId()).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(OutboxStatus.NEW);
         assertThat(updated.getPublishedAt()).isNull();
+        assertThat(updated.getRetryCount()).isEqualTo(1);
+        assertThat(updated.getLastError()).contains("kafka send failed");
+        assertThat(updated.getLastAttemptAt()).isNotNull();
+    }
+
+    @Test
+    void publishNewEventsMarksEventFailedWhenMaxRetryCountIsReached() throws Exception {
+        // given
+        DeliveryLifecycleEventPayload payload = buildPayload(3003L, 4003L, "DELIVERY_DELIVERED");
+        OutboxEvent outboxEvent = createNewOutboxEvent("4003", payload, 4);
+        CompletableFuture<SendResult<String, DeliveryLifecycleEventPayload>> failure =
+                CompletableFuture.failedFuture(new RuntimeException("kafka send failed"));
+
+        when(deliveryKafkaTemplate.send(
+                eq(DELIVERY_TOPIC),
+                eq(outboxEvent.getAggregateId()),
+                any(DeliveryLifecycleEventPayload.class)
+        )).thenReturn(failure);
+
+        // when
+        outboxPublisherService.publishNewEvents();
+
+        // then
+        OutboxEvent updated = outboxEventRepository.findById(outboxEvent.getId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(OutboxStatus.FAILED);
+        assertThat(updated.getPublishedAt()).isNull();
+        assertThat(updated.getRetryCount()).isEqualTo(5);
+        assertThat(updated.getLastError()).contains("kafka send failed");
+        assertThat(updated.getLastAttemptAt()).isNotNull();
     }
 
     private OutboxEvent createNewOutboxEvent(String aggregateId, DeliveryLifecycleEventPayload payload)
+            throws Exception {
+        return createNewOutboxEvent(aggregateId, payload, 0);
+    }
+
+    private OutboxEvent createNewOutboxEvent(String aggregateId, DeliveryLifecycleEventPayload payload, int retryCount)
             throws Exception {
         return outboxEventRepository.save(OutboxEvent.builder()
                 .aggregateType("DELIVERY")
@@ -114,6 +150,9 @@ class OutboxPublisherServiceTest {
                 .status(OutboxStatus.NEW)
                 .createdAt(payload.occurredAt())
                 .publishedAt(null)
+                .retryCount(retryCount)
+                .lastError(null)
+                .lastAttemptAt(null)
                 .build());
     }
 

@@ -96,6 +96,9 @@ public class OrderFulfilledConsumerService {
                         .status(OutboxStatus.NEW)
                         .createdAt(payload.occurredAt())
                         .publishedAt(null)
+                        .retryCount(0)
+                        .lastError(null)
+                        .lastAttemptAt(null)
                         .build()
         );
         processedEventRepository.save(new ProcessedEvent(eventId, processedAt));
