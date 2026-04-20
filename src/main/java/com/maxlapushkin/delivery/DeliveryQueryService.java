@@ -1,4 +1,4 @@
-package com.maxlapushkin.delivery.service;
+package com.maxlapushkin.delivery;
 
 import com.maxlapushkin.delivery.dto.DeliveryResponse;
 import com.maxlapushkin.delivery.dto.DeliveryTimelineResponse;

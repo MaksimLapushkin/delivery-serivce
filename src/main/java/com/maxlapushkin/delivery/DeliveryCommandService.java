@@ -1,4 +1,4 @@
-package com.maxlapushkin.delivery.service;
+package com.maxlapushkin.delivery;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxlapushkin.delivery.dto.DeliveryLifecycleEventPayload;

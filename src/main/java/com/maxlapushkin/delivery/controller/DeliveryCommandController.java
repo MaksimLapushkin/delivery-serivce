@@ -1,7 +1,7 @@
 package com.maxlapushkin.delivery.controller;
 
 import com.maxlapushkin.delivery.dto.DeliveryStateChangeResponse;
-import com.maxlapushkin.delivery.service.DeliveryCommandService;
+import com.maxlapushkin.delivery.DeliveryCommandService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
