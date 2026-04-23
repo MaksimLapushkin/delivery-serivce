@@ -43,7 +43,7 @@ class OutboxPublisherServiceTest {
     private static final String DELIVERY_TOPIC = "delivery.lifecycle.v1";
 
     @Autowired
-    private OutbogixPublisherService outboxPublisherService;
+    private OutboxPublisherService outboxPublisherService;
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
