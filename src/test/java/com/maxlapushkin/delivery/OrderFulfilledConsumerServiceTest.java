@@ -3,6 +3,7 @@ package com.maxlapushkin.delivery;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.maxlapushkin.delivery.dto.OrderFulfilledEvent;
+import com.maxlapushkin.delivery.dto.OrderFulfilledPayload;
 import com.maxlapushkin.delivery.model.Delivery;
 import com.maxlapushkin.delivery.model.DeliveryStatus;
 import com.maxlapushkin.delivery.model.DeliveryTimeline;
@@ -11,7 +12,7 @@ import com.maxlapushkin.delivery.repository.DeliveryRepository;
 import com.maxlapushkin.delivery.repository.DeliveryTimelineRepository;
 import com.maxlapushkin.delivery.repository.OutboxEventRepository;
 import com.maxlapushkin.delivery.repository.ProcessedEventRepository;
-import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -62,13 +63,13 @@ class OrderFulfilledConsumerServiceTest {
         orderFulfilledConsumerService.handleOrderLifecycleEvent(event);
 
         // then
-        Delivery delivery = deliveryRepository.findByOrderId(event.orderId()).orElseThrow();
+        Delivery delivery = deliveryRepository.findByOrderId(event.payload().orderId()).orElseThrow();
         assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.ACCEPTED);
-        assertThat(delivery.getCustomerName()).isEqualTo(event.customerName());
-        assertThat(delivery.getDeliveryAddress()).isEqualTo(event.deliveryAddress());
-        assertThat(delivery.getDeliveryCity()).isEqualTo(event.deliveryCity());
-        assertThat(delivery.getDeliveryPostalCode()).isEqualTo(event.deliveryPostalCode());
-        assertThat(delivery.getCustomerPhone()).isEqualTo(event.customerPhone());
+        assertThat(delivery.getCustomerName()).isEqualTo(event.payload().customerName());
+        assertThat(delivery.getDeliveryAddress()).isEqualTo(event.payload().deliveryAddress());
+        assertThat(delivery.getDeliveryCity()).isEqualTo(event.payload().deliveryCity());
+        assertThat(delivery.getDeliveryPostalCode()).isEqualTo(event.payload().deliveryPostalCode());
+        assertThat(delivery.getCustomerPhone()).isEqualTo(event.payload().customerPhone());
 
         assertThat(deliveryTimelineRepository.findByDeliveryIdOrderByOccurredAtAsc(delivery.getId()))
                 .hasSize(1);
@@ -93,7 +94,7 @@ class OrderFulfilledConsumerServiceTest {
         orderFulfilledConsumerService.handleOrderLifecycleEvent(event);
 
         // then
-        Delivery delivery = deliveryRepository.findByOrderId(event.orderId()).orElseThrow();
+        Delivery delivery = deliveryRepository.findByOrderId(event.payload().orderId()).orElseThrow();
         assertThat(deliveryRepository.count()).isEqualTo(1);
         assertThat(processedEventRepository.count()).isEqualTo(1);
         assertThat(deliveryTimelineRepository.findByDeliveryIdOrderByOccurredAtAsc(delivery.getId()))
@@ -127,24 +128,28 @@ class OrderFulfilledConsumerServiceTest {
         // given
         OrderFulfilledEvent event = new OrderFulfilledEvent(
                 UUID.randomUUID(),
-                "ORDER_CANCELLED",
                 2004L,
-                "CANCELLED",
-                9001L,
-                "Jane Customer",
-                "123 Test Street",
-                "Budapest",
-                "1011",
-                "+36123456789",
-                Instant.now(),
-                UUID.randomUUID()
+                "order-2004",
+                BigDecimal.valueOf(1776935800.695920100),
+                "ORDER_CANCELLED",
+                new OrderFulfilledPayload(
+                        2004L,
+                        "CANCELLED",
+                        9001L,
+                        "Jane Customer",
+                        "123 Test Street",
+                        "Budapest",
+                        "1011",
+                        "+36123456789",
+                        List.of()
+                )
         );
 
         // when
         orderFulfilledConsumerService.handleOrderLifecycleEvent(event);
 
         // then
-        assertThat(deliveryRepository.findByOrderId(event.orderId())).isEmpty();
+        assertThat(deliveryRepository.findByOrderId(event.payload().orderId())).isEmpty();
         assertThat(processedEventRepository.count()).isZero();
         assertThat(deliveryTimelineRepository.count()).isZero();
         assertThat(outboxEventRepository.count()).isZero();
@@ -153,17 +158,21 @@ class OrderFulfilledConsumerServiceTest {
     private OrderFulfilledEvent buildOrderFulfilledEvent(UUID eventId, Long orderId) {
         return new OrderFulfilledEvent(
                 eventId,
-                "ORDER_FULFILLED",
                 orderId,
-                "FULFILLED",
-                9001L,
-                "Jane Customer",
-                "123 Test Street",
-                "Budapest",
-                "1011",
-                "+36123456789",
-                Instant.now(),
-                UUID.randomUUID()
+                "order-" + orderId,
+                BigDecimal.valueOf(1776935800.695920100),
+                "ORDER_FULFILLED",
+                new OrderFulfilledPayload(
+                        orderId,
+                        "FULFILLED",
+                        9001L,
+                        "Jane Customer",
+                        "123 Test Street",
+                        "Budapest",
+                        "1011",
+                        "+36123456789",
+                        List.of()
+                )
         );
     }
 

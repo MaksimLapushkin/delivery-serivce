@@ -3,6 +3,7 @@ package com.maxlapushkin.delivery.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxlapushkin.delivery.dto.DeliveryLifecycleEventPayload;
 import com.maxlapushkin.delivery.dto.OrderFulfilledEvent;
+import com.maxlapushkin.delivery.dto.OrderFulfilledPayload;
 import com.maxlapushkin.delivery.model.*;
 import com.maxlapushkin.delivery.repository.DeliveryRepository;
 import com.maxlapushkin.delivery.repository.DeliveryTimelineRepository;
@@ -39,25 +40,27 @@ public class OrderFulfilledConsumerService {
         if (!"ORDER_FULFILLED".equals(event.eventType())) {
             return;
         }
+        OrderFulfilledPayload orderPayload = event.payload();
         if (processedEventRepository.existsById(event.eventId().toString())) {
             return;
         }
-        if (deliveryRepository.findByOrderId(event.orderId()).isPresent()) {
+        if (deliveryRepository.findByOrderId(orderPayload.orderId()).isPresent()) {
             processedEventRepository.save(new ProcessedEvent(event.eventId().toString(), Instant.now()));
-            log.warn("Delivery already exists for orderId={}", event.orderId());
+            log.warn("Delivery already exists for orderId={}", orderPayload.orderId());
             return;
         }
+        Instant now = Instant.now();
         Delivery delivery = Delivery.builder()
                 .id(null)
-                .orderId(event.orderId())
+                .orderId(orderPayload.orderId())
                 .status(DeliveryStatus.ACCEPTED)
-                .customerName(event.customerName())
-                .deliveryAddress(event.deliveryAddress())
-                .deliveryCity(event.deliveryCity())
-                .deliveryPostalCode(event.deliveryPostalCode())
-                .customerPhone(event.customerPhone())
-                .createdAt(event.occurredAt())
-                .updatedAt(event.occurredAt())
+                .customerName(orderPayload.customerName())
+                .deliveryAddress(orderPayload.deliveryAddress())
+                .deliveryCity(orderPayload.deliveryCity())
+                .deliveryPostalCode(orderPayload.deliveryPostalCode())
+                .customerPhone(orderPayload.customerPhone())
+                .createdAt(now)
+                .updatedAt(now)
                 .deliveredAt(null)
                 .returnedAt(null)
                 .cancelledAt(null)
@@ -65,7 +68,6 @@ public class OrderFulfilledConsumerService {
         deliveryRepository.save(delivery);
         String eventId = event.eventId().toString();
         Instant processedAt = Instant.now();
-        Instant now = event.occurredAt();
 
         DeliveryLifecycleEventPayload payload = new DeliveryLifecycleEventPayload(
                 UUID.randomUUID(),

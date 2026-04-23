@@ -3,7 +3,8 @@ spring:
     name: delivery-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5434/delivery_db
+    # Uses the shared Postgres container on localhost:5433 with this service's own delivery_db database.
+    url: jdbc:postgresql://localhost:5433/delivery_db
     username: postgres
     password: postgres
 
